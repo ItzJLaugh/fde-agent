@@ -6,12 +6,24 @@ on:
   pull_request:
     branches: [main]
 
+# Least privilege: the job only needs to read the repo.
+permissions:
+  contents: read
+
+# A newer push to the same branch/PR cancels the older, still-running check.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   check:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v10.4.0
+        with:
+          enable-cache: true
+          python-version: "3.12"
       - run: uv sync --locked
       - name: Ruff lint
         run: uv run ruff check .
