@@ -15,8 +15,9 @@ against a baseline.
 2. [Data inventory](#2-data-inventory)
 3. [Data quality log](#3-data-quality-log)
 4. [Baseline](#4-baseline)
-5. [Hypothesis log](#5-hypothesis-log)
-6. [Next steps](#6-next-steps)
+5. [Exploration: what goes with bad reviews](#5-exploration-what-goes-with-bad-reviews)
+6. [Hypothesis log](#6-hypothesis-log)
+7. [Next steps](#7-next-steps)
 
 ---
 
@@ -85,7 +86,74 @@ freight, per DQ4.
 
 ---
 
-## 5. Hypothesis log
+## 5. Exploration: what goes with bad reviews
+
+**Method.** I built one processed table with a row per reviewed order (98,673 orders) and a
+True/False column for each condition (a *flag*). The *effect* is a 1–2★ review, which
+happens on 14.7% of orders. Then I compared flags one at a time, in pairs (truth tables),
+in exact combinations (set intersections), and as a graph.
+Code: `src/fde_agent/processed.py` (flag rules), `src/fde_agent/figures.py` (charts).
+Regenerate with `uv run python -m fde_agent.figures`.
+
+| Flag | Rule |
+|---|---|
+| `not_delivered` | order_status is not `delivered` |
+| `late` | delivered after the estimated date |
+| `slow` | purchase → delivery took 21+ days |
+| `high_freight` | freight is 30%+ of item price |
+| `multi_item` / `multi_seller` | 2+ items / 2+ sellers in the order |
+| `interstate` | a seller is in a different state than the customer |
+| `installments` / `boleto` | paid in 2+ installments / paid by bank slip |
+
+### What I see
+
+**1. Delivery problems dominate.** Not delivered: 78% bad reviews. Late: 62%. Slow: 38%.
+Payment method, freight share and interstate shipping barely move it (14–16%, about the
+same as all orders).
+
+![Single flags](figures/fig1_single_flags.png)
+
+**2. Lateness is a cliff, not a slope.** Early orders sit flat at ~10% bad reviews,
+however early they arrive. Then the rate jumps to ~50% by 3 days late and ~80% by 9 days
+late. The estimated date works like a promise: breaking it is what hurts, not slowness
+itself.
+
+![Days late](figures/fig6_days_late.png)
+
+**3. Multi-item orders hurt even when they're on time.** Multi-item orders that weren't
+late still get 26% bad reviews, versus 10% for single-item on-time orders. Something other
+than lateness is going on. My guess is split shipments: part of the order arrives and the
+customer reviews before the rest does.
+
+![Truth tables](figures/fig3_truth_tables.png)
+
+**4. The flags stack.** Late + slow + multi-item: 71% (n=395). The clean group with none of
+the 5 delivery/order flags (n=74,198, 75% of orders) is at 7%.
+
+![Intersections](figures/fig4_intersections.png)
+
+<details>
+<summary>Pair matrix and flag graph</summary>
+
+![Pair matrix](figures/fig2_pair_matrix.png)
+![Flag graph](figures/fig5_flag_graph.png)
+
+</details>
+
+**Caution.** All of this is correlation. Late orders may also be far-away, bulky, or from
+weaker sellers. The logistic regression with controls (planned) is how I'll separate them.
+
+### New hypotheses from this
+
+- **H2: Missing the estimated delivery date causes bad reviews, which costs repeat
+  revenue.** A cliff at day 0 points to *padding the estimate*, or warning customers before
+  the date passes, as cheap fixes.
+- **H3: Multi-item orders fail for a reason besides lateness**, likely split shipments.
+  Check whether `review_creation_date` comes before the last item's delivery.
+
+---
+
+## 6. Hypothesis log
 
 Numbers come from **evidence files** in [`docs/evidence/`](evidence/). Regenerate them with
 `uv run python -m fde_agent.evidence`.
@@ -157,11 +225,13 @@ includes 0.
 
 ---
 
-## 6. Next steps
+## 7. Next steps
 
 - [x] `baseline()`: revenue, delivered orders, AOV → [section 4](#4-baseline)
+- [x] Processed flag table + exploration charts → [section 5](#5-exploration-what-goes-with-bad-reviews)
 - [ ] H1: `order_status` breakdown → repeat rate by first-order outcome → sizing
-- [ ] Delivery delay vs review score: find the delay where scores change (scikit-learn + matplotlib)
+- [ ] H2: fit the threshold with scikit-learn (one-split tree), then logistic regression with controls
+- [ ] H3: review date vs last item delivery for multi-item orders
 - [ ] Repeat-purchase rate overall (L2)
 - [ ] Seller revenue concentration: Lorenz curve + Gini (L3)
 - [ ] Lead conversion by `origin` with confidence intervals (L1)
