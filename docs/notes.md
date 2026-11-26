@@ -76,9 +76,12 @@ The "before" numbers. Every hypothesis is sized against them. Delivered orders o
 
 | Metric | Value | Source |
 |---|---|---|
-| Total revenue (R$) | _TBD_ | `baseline()` |
-| Delivered orders | _TBD_ | `baseline()` |
-| Average order value (R$) | _TBD_ | `baseline()` |
+| Total revenue | **R$ 15,419,773.75** | [E2](evidence/E2-baseline.md) |
+| Delivered orders | **96,478** | [E2](evidence/E2-baseline.md) |
+| Average order value | **R$ 159.83** | [E2](evidence/E2-baseline.md) |
+
+Freight is R$ 2.2M of that revenue (14%). Item price alone is R$ 13.2M. Both counts include
+freight, per DQ4.
 
 ---
 
@@ -156,7 +159,7 @@ includes 0.
 
 ## 6. Next steps
 
-- [ ] `baseline()`: revenue, delivered orders, AOV → fill in [section 4](#4-baseline)
+- [x] `baseline()`: revenue, delivered orders, AOV → [section 4](#4-baseline)
 - [ ] H1: `order_status` breakdown → repeat rate by first-order outcome → sizing
 - [ ] Delivery delay vs review score: find the delay where scores change (scikit-learn + matplotlib)
 - [ ] Repeat-purchase rate overall (L2)
